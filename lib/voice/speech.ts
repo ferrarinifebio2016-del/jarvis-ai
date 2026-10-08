@@ -1,0 +1,1 @@
+export function speak(text:string,language:'en'|'ro'){if(typeof window==='undefined'||!('speechSynthesis' in window))return false;window.speechSynthesis.cancel();const utterance=new SpeechSynthesisUtterance(text);utterance.lang=language==='ro'?'ro-RO':'en-US';window.speechSynthesis.speak(utterance);return true;}
