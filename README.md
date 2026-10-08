@@ -10,20 +10,24 @@ A responsive personal AI assistant built with Next.js App Router, TypeScript, Ta
 4. Run `npm run dev`.
 5. Open http://localhost:3000. Demo mode works immediately.
 
-## Connect real AI
-Copy `.env.example` to `.env.local` (Windows: copy it using your file manager). Set these variables, using your own provider key:
+## Connect Groq (real AI)
+Copy `.env.example` to `.env.local` (Windows: copy it using your file manager). Create your own API key at https://console.groq.com/keys. Set:
 
 ```env
-AI_MODE=live
-AI_PROVIDER=openai
-AI_BASE_URL=https://api.openai.com/v1
-AI_MODEL=gpt-4o-mini
-AI_API_KEY=your-own-key
+AI_MODE=groq
+GROQ_API_KEY=
+AI_MODEL=openai/gpt-oss-20b
 ```
 
-For Groq, set `AI_PROVIDER=groq`, `AI_BASE_URL=https://api.groq.com/openai/v1`, and `AI_MODEL=llama-3.3-70b-versatile`. Choose a model available in your provider account. Any compatible HTTPS base endpoint exposing `/chat/completions` is supported. Restart the server after editing environment variables. Settings offers a temporary demo override when the server is in live mode. Language can be switched using EN/RO beside the composer.
+Paste your real key after `GROQ_API_KEY=` only in your local `.env.local` or the Vercel secret setting. The example deliberately contains no key. `AI_MODEL` is optional: leaving it empty uses `openai/gpt-oss-20b`, currently listed among [Groq's production models](https://console.groq.com/docs/models). Choose another supported chat model if needed; account/model availability can change.
 
-Keys are read only in server modules. Never prefix them with NEXT_PUBLIC_, commit them, or enter them into client source. The browser talks only to `/api/chat`. Provider URLs cannot be supplied by the browser. Live mode without a key shows a setup error rather than silently returning demo output. “Provider configured” means configuration exists, not that an authenticated connection has been tested; a successful chat verifies that.
+Restart the local server after editing environment variables. Set `AI_MODE=demo` to restore the existing free demo behavior. Settings can also temporarily select demo responses while the server is in Groq mode. Language can be switched using EN/RO beside the composer. Each request sends the active conversation's last 60 messages in their original order, plus an English or Romanian system instruction; other chats are not mixed into the session. Existing browser-local history and voice controls are preserved.
+
+Groq is called only from the server-side `/api/chat` route. `GROQ_API_KEY` is read in a `server-only` module. The endpoint is fixed to `https://api.groq.com/openai/v1/chat/completions`; Groq mode ignores `AI_BASE_URL` and `AI_PROVIDER`. Neither the key nor raw upstream error bodies are returned to the browser. Never prefix keys with `NEXT_PUBLIC_`, commit them, or enter them into client source. `/api/status` exposes only mode/provider/model and whether a key is configured. “Provider configured” means a key exists, not that it was authenticated; a successful chat verifies that.
+
+Missing/invalid keys, rate limits, unavailable models, denied access, timeouts, network failures, and malformed/empty replies show friendly errors in the existing UI. The draft is restored after a failed request, so you can retry. Real mode never silently switches to demo on provider failure.
+
+For the existing generic OpenAI-compatible integration, `AI_MODE=live` remains available with `AI_API_KEY`, `AI_PROVIDER`, `AI_BASE_URL`, and `AI_MODEL`. Legacy `AI_PROVIDER=groq` in live mode also uses `GROQ_API_KEY`; migrate Groq deployments to `AI_MODE=groq`.
 
 ## Production and checks
 ```sh
@@ -38,11 +42,11 @@ Open http://localhost:3000 after `npm start`. Deploy to a Node.js platform suppo
 - `app/page.tsx`: responsive workspace, conversation switching, prompt starters, loading/error states, language, settings and history management.
 - `app/api/chat/route.ts`: same-origin request check, body/message limits, validation, and safe provider error responses.
 - `app/api/status/route.ts`: non-secret configuration status.
-- `lib/ai`: interchangeable demo/live provider, timeout and OpenAI-compatible request.
+- `lib/ai`: server-only demo/Groq/compatible providers, timeout, and sanitized typed errors.
 - `lib/memory`: bounded browser history and recovery from corrupt storage. Last 60 messages of the active chat are sent as context. Last 30 chats are kept locally.
 - `lib/voice`: browser recognition and speech synthesis controller, permission handling, state cleanup, and future server transcription/wake-word interfaces. Voices and recognition languages depend on browser/OS.
 - `lib/tools`: typed registry for future integrations; no tools execute today.
-- `tests`: input validation, demo languages, and local history recovery.
+- `tests`: input validation, provider routing/history/languages/error handling, voice helpers, origin security, and local history recovery.
 
 Enter sends a message; Shift+Enter adds a line. History is stored unencrypted in this browser; export it from Memory before clearing site data. Only messages in a live conversation are sent to your configured AI provider. Demo responses are deterministic samples, not AI-generated. No fake credentials, system telemetry, calendar access, or integrations are included.
 
@@ -64,17 +68,24 @@ The source lives at https://github.com/ferrarinifebio2016-del/jarvis-ai on `main
 
 For the first deployment, expand **Environment Variables**, add `AI_MODE` with value `demo`, then click **Deploy**. No API key is needed; omission of all variables also defaults to demo. Wait until the deployment is **Ready**, then click **Visit** to open your actual HTTPS application URL.
 
-For real OpenAI chat, add these environment variables before deployment (or later in **Project → Settings → Environment Variables**):
+For real Groq chat on an existing Vercel project:
 
-| Name | OpenAI value | Groq value |
+1. Open the **Vercel dashboard → jarvis-ai → Settings → Environment Variables**.
+2. Add or edit `AI_MODE` with value `groq` for **Production**.
+3. Add `GROQ_API_KEY` and paste your own key from https://console.groq.com/keys. Select **Production**, and mark it **Sensitive** where offered. Do not put the key in GitHub, source files, the chat interface, or `NEXT_PUBLIC_` variables.
+4. Add `AI_MODEL` with value `openai/gpt-oss-20b` for **Production**, or remove a stale model value to use the default. In particular, remove or replace an old `gpt-4o-mini` value: it is an OpenAI API model, not the Groq default.
+5. Remove old `AI_API_KEY`, `AI_PROVIDER`, and `AI_BASE_URL` values if they were only used for Groq; Groq mode does not need them. Keep unrelated provider settings only if you intend to use generic `live` mode later.
+6. For **Preview**, set `AI_MODE=demo` and omit `GROQ_API_KEY`. Development credentials are optional and separate.
+7. Click **Save** for each variable. Then **Deployments → latest production deployment → ⋯ → Redeploy → Redeploy**. Environment changes do not affect an already running deployment.
+8. When it is **Ready**, click **Visit** and send a message. Test EN and RO; the current HUD, browser voice input, and speech playback work with the returned assistant text.
+
+| Variable | Production value | Preview value |
 | --- | --- | --- |
-| `AI_MODE` | `live` | `live` |
-| `AI_PROVIDER` | `openai` | `groq` |
-| `AI_BASE_URL` | `https://api.openai.com/v1` | `https://api.groq.com/openai/v1` |
-| `AI_MODEL` | `gpt-4o-mini` | `llama-3.3-70b-versatile` |
-| `AI_API_KEY` | Paste your own OpenAI key | Paste your own Groq key |
+| `AI_MODE` | `groq` | `demo` |
+| `GROQ_API_KEY` | Your own secret Groq key | Omit |
+| `AI_MODEL` | `openai/gpt-oss-20b` (or omit for default) | Optional |
 
-Choose a currently available model in your provider account. Select **Production** for live credentials. Keep **Preview** deployments in demo mode by setting `AI_MODE=demo` for Preview and omitting the key there; Development credentials are optional. Mark `AI_API_KEY` as **Sensitive** if Vercel offers that option. Never add a `NEXT_PUBLIC_` prefix or commit a real `.env` file. Do not enter keys into chat or the browser interface.
+Do not send your key to anyone for troubleshooting. Invalid-key errors mean checking the secret and redeploying; rate limits mean waiting/checking account usage; unavailable-model errors mean selecting an active model your Groq account can use. No real API key is required during the build.
 
 After changing environment variables, go to **Deployments → latest production deployment → ⋯ → Redeploy**, confirm the production environment, and click **Redeploy**. Variables take effect in the new deployment. For future code changes, pushes to `main` automatically create production deployments; confirm **Settings → Environments → Production → Branch Tracking** uses `main` (older UI: **Settings → Git → Production Branch**).
 
