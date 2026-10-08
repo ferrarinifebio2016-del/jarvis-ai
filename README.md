@@ -1,4 +1,6 @@
 # JARVIS
+A cinematic personal AI dashboard with an animated cyan core, circular HUD rings, glass panels, voice visualization, and a collapsible mobile sidebar with bottom controls. Reduced-motion preferences are respected. The microphone indicator is explicitly off; the waveform reflects processing and browser speech playback, not microphone capture.
+
 A responsive personal AI assistant built with Next.js App Router, TypeScript, Tailwind CSS and Node.js. Includes a futuristic dashboard, English/Romanian conversations, browser-local history, export, speech playback, and an explicitly labeled demo that needs no credentials.
 
 ## First run (beginner friendly)
