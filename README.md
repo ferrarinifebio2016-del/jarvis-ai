@@ -1,5 +1,5 @@
 # JARVIS
-A cinematic personal AI dashboard with an animated cyan core, circular HUD rings, glass panels, voice visualization, and a collapsible mobile sidebar with bottom controls. Reduced-motion preferences are respected. The microphone indicator is explicitly off; the waveform reflects processing and browser speech playback, not microphone capture.
+A cinematic personal AI dashboard with an animated cyan core, circular HUD rings, glass panels, voice visualization, and a collapsible mobile sidebar with bottom controls. Reduced-motion preferences are respected. The microphone indicator reflects actual browser listening; the waveform reflects listening, processing, and speech playback.
 
 A responsive personal AI assistant built with Next.js App Router, TypeScript, Tailwind CSS and Node.js. Includes a futuristic dashboard, English/Romanian conversations, browser-local history, export, speech playback, and an explicitly labeled demo that needs no credentials.
 
@@ -40,7 +40,7 @@ Open http://localhost:3000 after `npm start`. Deploy to a Node.js platform suppo
 - `app/api/status/route.ts`: non-secret configuration status.
 - `lib/ai`: interchangeable demo/live provider, timeout and OpenAI-compatible request.
 - `lib/memory`: bounded browser history and recovery from corrupt storage. Last 60 messages of the active chat are sent as context. Last 30 chats are kept locally.
-- `lib/voice`: optional browser speech synthesis; voices depend on browser/OS. Microphone transcription is a future integration.
+- `lib/voice`: browser recognition and speech synthesis controller, permission handling, state cleanup, and future server transcription/wake-word interfaces. Voices and recognition languages depend on browser/OS.
 - `lib/tools`: typed registry for future integrations; no tools execute today.
 - `tests`: input validation, demo languages, and local history recovery.
 
@@ -89,3 +89,21 @@ After changing environment variables, go to **Deployments → latest production 
 The chat route uses the Node.js runtime with a 60-second Vercel function budget and a 30-second provider timeout. No build-time API key is required. Provider configuration is loaded on the server at runtime; the status endpoint exposes only mode/provider/model and whether a key exists.
 
 Before enabling a paid provider on a publicly accessible deployment, configure Vercel Deployment Protection where your plan supports it, or add application authentication and request rate limiting. Server-side secret storage hides the key, but the chat endpoint itself is not authenticated. Demo deployments can be shared without a provider key.
+
+## Voice interaction
+
+1. Open JARVIS on HTTPS (Vercel) or localhost. Choose EN or RO before starting.
+2. Tap **Speak** beside the HUD command input. Allow the browser microphone prompt. The HUD shows permission requested, then **Listening** with an active microphone indicator.
+3. Speak one utterance. Recognition ends automatically after a phrase; tap **Stop** to finish earlier. Tap **Cancel** while permission is pending to cancel the session. Final text is added to your existing draft. Review it and send normally. No interim or raw audio is saved by JARVIS.
+4. In Settings, optionally turn on **Auto-send transcription**. Only successful final transcription is sent; recognition errors, canceled sessions, and page hiding never auto-send. It defaults to off.
+5. Tap **Voice off** to enable automatic spoken responses, or **Read aloud** on any assistant message for manual playback. **Stop audio** stops current speech. Turning voice off stops speech and suppresses automatic reading of new replies. Manual Read aloud remains available.
+
+The HUD has Idle, Listening, Processing, Speaking, and Error states. Recognition and playback are canceled when switching language, conversation, or panels, leaving the page, or hiding the tab. Starting the microphone stops speech to avoid transcribing JARVIS itself. Sending text also stops microphone input. Permissions are requested only by an explicit microphone tap; there is no automatic listening.
+
+Browser support varies. Web Speech recognition is available in some Chrome/Edge and Safari versions, including some Android/iPhone configurations. It may use the browser vendor's online speech service: audio may leave the device, and permission to JARVIS does not make vendor recognition offline. It may require network access and supported OS languages. If unavailable or denied, JARVIS gives recovery instructions and text chat still works. Embedded browsers may need opening the site directly in a supported browser.
+
+Speech synthesis first selects an exact `ro-RO` or `en-US` voice, then another voice of the same language, then asks the browser for its language default. Install Romanian voices in device settings if none are available. Mobile browsers, especially iOS Safari, may block automatic playback until a direct tap: tap **Read aloud**. Short utterance chunks help mobile playback; blocked or failed speech shows an error instead of a fake speaking indicator. Real iPhone/Android audio and physical microphone quality need testing on those devices.
+
+No raw recordings, audio files, voice keys, or server speech services are enabled. Only text transcriptions become chat messages and follow the existing local-history/provider behavior. `SpeechToTextProvider` in `lib/voice/contracts.ts` is the extension point for a future server-side Groq Whisper adapter: that adapter should use ephemeral audio, explicit consent, and a server-only environment key.
+
+**Wake word:** no experimental always-listening mode is shipped because browser background recognition is not reliable. A typed foreground-only `WakeWordProvider` interface is ready for a future engine. Any implementation must require explicit opt-in, expose actual microphone activity, and stop on page hiding.
